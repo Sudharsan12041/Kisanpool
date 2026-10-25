@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
+import orders
 from database import get_connection, create_tables
 from pooling import add_listing, VILLAGES
 
@@ -47,8 +48,10 @@ class Listing(BaseModel):
 class OrderBody(BaseModel):
     lotId: int
 
+
 class OtpBody(BaseModel):
-    otp: str
+    # Exactly 4 digits, otherwise the request is refused with 422
+    otp: str = Field(pattern=r"^\d{4}$")
 
 
 @app.get("/lots")
@@ -98,17 +101,31 @@ def create_listing(listing: Listing):
     return {"success": True, **result}
 
 
-# The endpoints below are still dummy; we replace them in the next step
+# The three order endpoints. The real work happens in orders.py.
+# try/finally makes sure the database connection is closed even when
+# orders.py raises an error (404, 409, ...).
 @app.post("/orders")
 def place_order(body: OrderBody):
-    return {"orderId": 101, "status": "ESCROW_HELD"}
+    conn = get_connection()
+    try:
+        return orders.create_order(conn, body.lotId)
+    finally:
+        conn.close()
 
 
 @app.post("/orders/{order_id}/confirm")
 def confirm_delivery(order_id: int, body: OtpBody):
-    return {"status": "DELIVERED"}
+    conn = get_connection()
+    try:
+        return orders.confirm_delivery(conn, order_id, body.otp)
+    finally:
+        conn.close()
 
 
 @app.get("/orders/{order_id}")
 def get_order(order_id: int):
-    return {"orderId": order_id, "status": "ESCROW_HELD"}
+    conn = get_connection()
+    try:
+        return orders.get_order(conn, order_id)
+    finally:
+        conn.close()
