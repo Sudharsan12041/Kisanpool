@@ -1,49 +1,100 @@
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useLang } from "../LanguageContext";
 import { getLots } from "../api";
 
 export default function FarmerLots() {
   const { t } = useLang();
-
-  // lots starts empty; loading starts true until data arrives
+  const { state } = useLocation();
   const [lots, setLots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Runs once when the page first appears: fetch data from api.js
+  // Reload the lots whenever the refresh button changes the key.
   useEffect(() => {
-    getLots().then((data) => {
-      setLots(data);
-      setLoading(false);
-    });
-  }, []); // the empty [] means "run only once"
+    getLots()
+      .then((data) => {
+        setLots(data);
+        setError("");
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [refreshKey]);
 
   if (loading) {
     return <p className="p-8 text-center text-lg">Loading...</p>;
   }
 
-  // For now, the farmer belongs to the first lot
-  const lot = lots[0];
+  if (error) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 p-6 text-center">
+        <p className="text-red-600">{error}</p>
+        <button
+          onClick={() => setRefreshKey(refreshKey + 1)}
+          className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
-  // Progress as a percentage, capped at 100 so the bar never overflows
+  if (!state) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 p-6 text-center">
+        <p>Add your produce first to see your lot.</p>
+        <Link
+          to="/farmer/add"
+          className="block w-full rounded-xl bg-green-600 py-3 font-semibold text-white"
+        >
+          {t.addProduce}
+        </Link>
+      </div>
+    );
+  }
+
+  // Use the lot ID passed from the produce form to find this farmer's lot.
+  const lot = lots.find((l) => l.id === state.lotId);
+
+  if (!lot) {
+    return <p className="p-8 text-center text-lg">This lot no longer exists.</p>;
+  }
+
   const percent = Math.min(100, (lot.totalKg / lot.thresholdKg) * 100);
-
-  // Hardcoded for now; the real value will come from the backend later
-  const myShareKg = 250;
+  const remaining = Math.max(0, lot.thresholdKg - lot.totalKg);
+  const statusText =
+    lot.status === "READY"
+      ? "Full - waiting for a buyer"
+      : lot.status === "ORDERED"
+        ? "A buyer has ordered this lot"
+        : `Needs ${remaining} kg more`;
 
   return (
     <div className="mx-auto max-w-md space-y-5 p-6">
       <h2 className="text-2xl font-bold text-green-800">{t.myLots}</h2>
 
       <div className="space-y-4 rounded-2xl bg-white p-5 shadow">
-        <p className="text-xl font-semibold">
-          {lot.crop} - {lot.village}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xl font-semibold">
+            {lot.crop} - {lot.village}
+          </p>
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-medium ${
+              lot.status === "OPEN"
+                ? "bg-amber-100 text-amber-800"
+                : "bg-green-100 text-green-800"
+            }`}
+          >
+            {statusText}
+          </span>
+        </div>
 
         <p className="text-lg">
           {lot.totalKg} kg from {lot.farmers} farmers
         </p>
 
-        {/* Progress bar: grey track with a green fill whose width is the percent */}
+        {/* The green fill shows how much of the lot threshold is reached. */}
         <div>
           <div className="h-4 w-full rounded-full bg-gray-200">
             <div
@@ -56,10 +107,19 @@ export default function FarmerLots() {
           </p>
         </div>
 
-        <p className="text-lg font-semibold text-green-700">
-          Your share: {myShareKg} kg
-        </p>
+        {state.myKg > 0 && (
+          <p className="text-lg font-semibold text-green-700">
+            Your share: {state.myKg} kg
+          </p>
+        )}
       </div>
+
+      <button
+        onClick={() => setRefreshKey(refreshKey + 1)}
+        className="w-full rounded-xl border-2 border-green-600 py-3 font-semibold text-green-700"
+      >
+        Refresh
+      </button>
     </div>
   );
 }
