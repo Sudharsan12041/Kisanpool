@@ -23,7 +23,7 @@ export default function OfflineBanner() {
   if (online) return null;
 
   return (
-    <div className="bg-red-600 px-4 py-2 text-center text-sm font-medium text-white">
+    <div className="offline-banner" role="status">
       You are offline. Some features may not work.
     </div>
   );

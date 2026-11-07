@@ -22,15 +22,18 @@ Middlemen exist because one small farmer cannot do three jobs: gather a truckloa
 - Delivery agent confirms delivery with the OTP, and the order status moves forward
 - Order status flow that refuses skipped or backward steps
 - English / Hindi / Tamil labels, offline banner, error messages everywhere
+- Role-based responsive workspaces, lot map, pooling details and order tracking
+- Backend-configured suggested prices shown separately from live market data
 - Demo data script: 10 farmers, 3 buyers, 3 lots
 
 ## Still placeholder
 
 | Part | Today | Planned |
 |---|---|---|
-| Quality grading | Fixed result (Grade A, 91%) | Photo model |
+| Quality grading | Not connected | Photo model and `POST /grade` endpoint |
 | Price suggestion | Fixed range per crop | Mandi price forecast model |
-| Escrow and payout | Order status only, sample payout table | Real payout split |
+| Escrow and payout | Order status only; payment hold is simulated | Real escrow and payout split |
+| Accounts and notifications | Role selection only; no personal accounts or event feed | Authentication, profiles and notification APIs |
 
 ## Run it locally
 
@@ -89,8 +92,8 @@ Start from fresh demo data.
 | 1 | Buyer | Open **Buyer** | Onion lot "Ready to order". Tomato lot "Needs 300 kg more" with a disabled button |
 | 2 | Farmer | Open **Farmer**: Tomato, 300 kg, Peelamedu, harvest date 29-10-2026, Submit | "Your produce joined lot #1!" and "It is full and ready for buyers" |
 | 3 | Buyer | **Refresh**, then **Order Lot** on Tomato | Order page with a 4-digit OTP |
-| 4 | Agent | **Open delivery agent screen**, upload any photo, enter the OTP, **Confirm delivery** | "Grade A" placeholder, then "Delivery confirmed" |
-| 5 | Buyer | **Refresh status** on the order page | OTP gone, "Delivery confirmed" highlighted. **Simulate grading and payout** shows the sample payout |
+| 4 | Agent | **Open delivery agent screen**, enter the OTP, **Verify OTP & confirm delivery** | "Delivery verified"; quality grading remains unavailable |
+| 5 | Buyer | **Refresh status** on the order page | OTP hidden and "Delivered" highlighted. Grading and payment remain pending until backend services exist |
 
 The demo data uses fixed dates (see `backend/seed_demo.py`). A farmer's harvest date must be within 3 days of the lot's date (25 to 31 Oct 2026 for the tomato lot), or a new lot is created.
 
@@ -104,11 +107,12 @@ The backend refuses skipped or backward moves. A lot goes `OPEN` → `READY` (20
 
 | Method | Path | What it does |
 |---|---|---|
-| GET | `/lots` | All lots with totals, status and suggested price |
+| GET | `/lots` | All lots with totals, status, suggested price, center coordinates and harvest date |
+| GET | `/price?crop=Tomato` | Fixed suggested range for a supported crop; no history or forecast |
 | POST | `/listings` | A farmer adds produce; it joins or creates a lot |
 | POST | `/orders` | A buyer orders a READY lot; returns the OTP |
 | POST | `/orders/{id}/confirm` | The agent confirms delivery with the OTP |
-| GET | `/orders/{id}` | Order status |
+| GET | `/orders/{id}` | Order status, OTP (demo only), and available lot summary |
 
 ## Project structure
 
@@ -116,13 +120,14 @@ The backend refuses skipped or backward moves. A lot goes `OPEN` → `READY` (20
 backend/
   main.py          API routes and input checks
   pooling.py       the lot-forming logic
+  pricing.py       fixed suggested ranges shared by API responses
   orders.py        orders, OTP and the status flow
   database.py      SQLite tables
   seed_demo.py     reset and load demo data
 frontend/src/
   api.js           every call to the backend
-  pages/           one file per screen
-  components/      TopBar, OfflineBanner, LotCard
+  pages/           role dashboards, map, prices, grading and account screens
+  components/      shared app shell, UI components and interactive map
   i18n.js          English, Hindi and Tamil labels
 ```
 
@@ -134,6 +139,9 @@ frontend/src/
 - Only 8 villages are known, because the pooling distance needs their coordinates.
 - The newest messages are English only.
 - Pages update when you press Refresh, not live.
+- Lot coordinates are available for the pooled-lot map; individual farmer coordinates, delivery destinations and agent assignments are not exposed.
+- The frontend requests `POST /grade`, but no grading route exists yet. The interface does not show a fabricated grade.
+- Historical market prices, price forecasts, account/profile APIs and notifications are not implemented.
 
 ## Team
 

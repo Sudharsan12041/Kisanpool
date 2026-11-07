@@ -1,54 +1,33 @@
-import { useLang } from "../LanguageContext";
+import { Link } from "react-router-dom";
+import { ArrowUpRight, MapPin, UsersRound } from "lucide-react";
+import { useLang } from "../useLang";
+import { CropArt, StatusBadge } from "./ui";
 
-// Props: lot = the data to show, onOrder = function to run when the button is pressed,
-// ordering = true while the order is being placed (disables the button)
 export default function LotCard({ lot, onOrder, ordering }) {
   const { t } = useLang();
-
-  // Only a full lot (READY) can be ordered
+  const threshold = Number(lot.thresholdKg) || 0;
+  const total = Number(lot.totalKg) || 0;
+  const percent = threshold ? Math.min(100, (total / threshold) * 100) : 0;
+  const remaining = Math.max(0, threshold - total);
   const ready = lot.status === "READY";
-  const remaining = Math.max(0, lot.thresholdKg - lot.totalKg);
-  const percent = Math.min(100, (lot.totalKg / lot.thresholdKg) * 100);
 
   return (
-    <div className="space-y-3 rounded-2xl bg-white p-5 shadow">
-      <div className="flex items-center justify-between">
-        <p className="text-xl font-semibold">{lot.crop}</p>
-        {/* Chip: green when the lot can be ordered, amber while it is still filling */}
-        <span
-          className={
-            "rounded-full px-3 py-1 text-sm font-medium " +
-            (ready ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")
-          }
-        >
-          {ready ? "Ready to order" : `Needs ${remaining} kg more`}
-        </span>
+    <article className="lot-card">
+      <div className="lot-card-art"><CropArt crop={lot.crop} /><StatusBadge status={lot.status} /></div>
+      <div className="lot-card-body">
+        <div className="lot-title-row"><div><p className="lot-id">LOT #{lot.id}</p><h3>{lot.crop}</h3></div><Link className="icon-button subtle-icon" to={`/lot/${lot.id}`} aria-label={`View ${lot.crop} lot details`}><ArrowUpRight size={17} /></Link></div>
+        <p className="lot-location"><MapPin size={14} />{lot.village}</p>
+        <div className="lot-metrics"><span><strong>{total.toLocaleString()}</strong> kg pooled</span><span><UsersRound size={14} />{lot.farmers} farmers</span></div>
+        <div className="progress-label"><span>Pooling progress</span><strong>{Math.round(percent)}%</strong></div>
+        <div className="progress-track"><div className="progress-fill" style={{ width: `${percent}%` }} /></div>
+        <p className="lot-hint">{ready ? "This lot is ready for buyers" : `${remaining.toLocaleString()} kg needed to complete this lot`}</p>
+        <div className="lot-card-footer">
+          <div><small>Suggested price</small><strong>₹{lot.priceMin}–{lot.priceMax}<small> / kg</small></strong></div>
+          <button className={`button ${ready ? "button-primary" : "button-disabled"}`} disabled={!ready || ordering} onClick={onOrder}>
+            {ordering ? "Placing…" : ready ? t.orderLot : "Pooling"}
+          </button>
+        </div>
       </div>
-
-      <p className="text-gray-700">
-        {lot.totalKg} kg - {lot.farmers} farmers - {lot.village}
-      </p>
-
-      {/* Slim progress bar towards the truckload target */}
-      <div className="h-2 w-full rounded-full bg-gray-200">
-        <div
-          className="h-2 rounded-full bg-green-600"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-
-      <p className="text-lg">
-        <span className="text-sm text-gray-500">Suggested price: </span>
-        ₹{lot.priceMin} - ₹{lot.priceMax} / kg
-      </p>
-
-      <button
-        onClick={onOrder}
-        disabled={!ready || ordering}
-        className="w-full rounded-xl bg-amber-500 py-3 text-lg font-semibold text-white disabled:opacity-50"
-      >
-        {ordering ? "..." : ready ? t.orderLot : "Waiting for more produce"}
-      </button>
-    </div>
+    </article>
   );
 }

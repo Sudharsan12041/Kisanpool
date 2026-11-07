@@ -1,125 +1,91 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useLang } from "../LanguageContext";
+import { ArrowRight, PackageCheck, PackagePlus, RefreshCw, Sprout, Truck } from "lucide-react";
 import { getLots } from "../api";
+import { EmptyState, ErrorState, LoadingState, PageHeading, StatCard, StatusBadge } from "../components/ui";
 
 export default function FarmerLots() {
-  const { t } = useLang();
   const { state } = useLocation();
   const [lots, setLots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Reload the lots whenever the refresh button changes the key.
   useEffect(() => {
+    let active = true;
     getLots()
-      .then((data) => {
-        setLots(data);
-        setError("");
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .then((data) => { if (active) { setLots(data); setError(""); } })
+      .catch((requestError) => { if (active) setError(requestError.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [refreshKey]);
 
-  if (loading) {
-    return <p className="p-8 text-center text-lg">Loading...</p>;
+  function reloadLots() {
+    setLoading(true);
+    setRefreshKey((key) => key + 1);
   }
 
-  if (error) {
-    return (
-      <div className="mx-auto max-w-md space-y-4 p-6 text-center">
-        <p className="text-red-600">{error}</p>
-        <button
-          onClick={() => setRefreshKey(refreshKey + 1)}
-          className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white"
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
+  const summary = useMemo(() => ({
+    totalKg: lots.reduce((sum, lot) => sum + Number(lot.totalKg || 0), 0),
+    active: lots.filter((lot) => lot.status === "OPEN").length,
+    ready: lots.filter((lot) => lot.status === "READY").length,
+    farmers: lots.reduce((sum, lot) => sum + Number(lot.farmers || 0), 0),
+  }), [lots]);
+  const ownLot = state?.lotId ? lots.find((lot) => lot.id === state.lotId) : null;
+  const activeLots = lots.filter((lot) => lot.status !== "ORDERED");
 
-  if (!state) {
-    return (
-      <div className="mx-auto max-w-md space-y-4 p-6 text-center">
-        <p>Add your produce first to see your lot.</p>
-        <Link
-          to="/farmer/add"
-          className="block w-full rounded-xl bg-green-600 py-3 font-semibold text-white"
-        >
-          {t.addProduce}
-        </Link>
-      </div>
-    );
-  }
-
-  // Use the lot ID passed from the produce form to find this farmer's lot.
-  const lot = lots.find((l) => l.id === state.lotId);
-
-  if (!lot) {
-    return <p className="p-8 text-center text-lg">This lot no longer exists.</p>;
-  }
-
-  const percent = Math.min(100, (lot.totalKg / lot.thresholdKg) * 100);
-  const remaining = Math.max(0, lot.thresholdKg - lot.totalKg);
-  const statusText =
-    lot.status === "READY"
-      ? "Full - waiting for a buyer"
-      : lot.status === "ORDERED"
-        ? "A buyer has ordered this lot"
-        : `Needs ${remaining} kg more`;
+  if (loading) return <LoadingState label="Loading the pooling network…" />;
+  if (error) return <ErrorState message={error} onRetry={reloadLots} />;
 
   return (
-    <div className="mx-auto max-w-md space-y-5 p-6">
-      <h2 className="text-2xl font-bold text-green-800">{t.myLots}</h2>
-
-      <div className="space-y-4 rounded-2xl bg-white p-5 shadow">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xl font-semibold">
-            {lot.crop} - {lot.village}
-          </p>
-          <span
-            className={`rounded-full px-3 py-1 text-sm font-medium ${
-              lot.status === "OPEN"
-                ? "bg-amber-100 text-amber-800"
-                : "bg-green-100 text-green-800"
-            }`}
-          >
-            {statusText}
-          </span>
-        </div>
-
-        <p className="text-lg">
-          {lot.totalKg} kg from {lot.farmers} farmers
-        </p>
-
-        {/* The green fill shows how much of the lot threshold is reached. */}
-        <div>
-          <div className="h-4 w-full rounded-full bg-gray-200">
-            <div
-              className="h-4 rounded-full bg-green-600"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-          <p className="mt-1 text-sm text-gray-600">
-            {lot.totalKg} / {lot.thresholdKg} kg ({Math.round(percent)}%)
-          </p>
-        </div>
-
-        {state.myKg > 0 && (
-          <p className="text-lg font-semibold text-green-700">
-            Your share: {state.myKg} kg
-          </p>
-        )}
+    <div className="page-stack">
+      <PageHeading
+        eyebrow="FARMER WORKSPACE"
+        title="Good things grow together."
+        description="A live view of produce pooling across KisanPool. Individual listing history isn’t available without farmer accounts."
+        action={<Link to="/farmer/add" className="button button-primary"><PackagePlus size={17} /> Add produce</Link>}
+      />
+      <div className="stats-grid">
+        <StatCard label="Produce in network" value={`${summary.totalKg.toLocaleString()} kg`} note={`${lots.length} active and completed lots`} icon={Sprout} />
+        <StatCard label="Pooling lots" value={summary.active} note="Still gathering produce" icon={Truck} tone="lime" />
+        <StatCard label="Ready for buyers" value={summary.ready} note="Full lots available to order" icon={PackageCheck} tone="blue" />
+        <StatCard label="Participating farmers" value={summary.farmers} note="Across all visible lots" icon={Sprout} tone="amber" />
       </div>
 
-      <button
-        onClick={() => setRefreshKey(refreshKey + 1)}
-        className="w-full rounded-xl border-2 border-green-600 py-3 font-semibold text-green-700"
-      >
-        Refresh
-      </button>
+      {ownLot && (
+        <section className="highlight-panel">
+          <div className="highlight-icon"><PackageCheck size={20} /></div>
+          <div><p className="eyebrow">YOUR LATEST LISTING</p><h3>{ownLot.crop} · Lot #{ownLot.id}</h3><p>Your contribution: <strong>{state.myKg} kg</strong> · {ownLot.totalKg.toLocaleString()} kg pooled so far</p></div>
+          <StatusBadge status={ownLot.status} />
+          <Link to={`/lot/${ownLot.id}`} className="button button-secondary">Lot details <ArrowRight size={15} /></Link>
+        </section>
+      )}
+
+      <section className="panel">
+        <div className="panel-heading">
+          <div><p className="eyebrow">POOLING ACTIVITY</p><h3>Lots across the network</h3></div>
+          <button className="button button-quiet" onClick={reloadLots}><RefreshCw size={15} /> Refresh</button>
+        </div>
+        {activeLots.length ? (
+          <div className="data-list">
+            {activeLots.map((lot) => {
+              const progress = lot.thresholdKg ? Math.min(100, (lot.totalKg / lot.thresholdKg) * 100) : 0;
+              return (
+                <Link to={`/lot/${lot.id}`} className="data-list-row" key={lot.id}>
+                  <span className="list-crop-icon">{lot.crop === "Tomato" ? "🍅" : lot.crop === "Onion" ? "🧅" : "🥔"}</span>
+                  <span className="list-main"><strong>{lot.crop} · {lot.village}</strong><small>Lot #{lot.id} · {lot.farmers} contributing farmers</small></span>
+                  <span className="list-progress"><span className="progress-track"><span className="progress-fill" style={{ width: `${progress}%` }} /></span><small>{lot.totalKg.toLocaleString()} / {lot.thresholdKg.toLocaleString()} kg</small></span>
+                  <StatusBadge status={lot.status} />
+                  <ArrowRight className="list-arrow" size={17} />
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState title="No open pooling lots yet" description="Add your produce to start or join a nearby pool." action={<Link className="button button-primary" to="/farmer/add">Add produce</Link>} />
+        )}
+      </section>
+      <div className="notice-card"><strong>About your dashboard</strong><span>Farmer-specific earnings and personal listing history will appear when KisanPool adds sign-in and farmer account APIs.</span></div>
     </div>
   );
 }

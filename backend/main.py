@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 import orders
 from database import get_connection, create_tables
 from pooling import add_listing, VILLAGES
+from pricing import PRICE_RANGES
 
 create_tables()  # runs once when the server starts; does nothing if tables exist
 
@@ -23,11 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Temporary fixed price range per crop (min, max).
-# Member 4's price model replaces this later.
-PRICE_RANGES = {"Tomato": (20, 24), "Onion": (18, 22), "Potato": (14, 18)}
-
 
 class Listing(BaseModel):
     # Literal means: only these exact crop names are accepted
@@ -60,6 +56,7 @@ def get_lots():
     # Join each lot with its listings, then total the kg and count the farmers
     rows = conn.execute("""
         SELECT lots.id, lots.crop, lots.village, lots.threshold_kg, lots.status,
+               lots.center_lat, lots.center_lng, lots.harvest_date,
                COALESCE(SUM(listings.quantity_kg), 0) AS total_kg,
                COUNT(DISTINCT listings.farmer_id) AS farmers
         FROM lots
@@ -81,8 +78,25 @@ def get_lots():
             "status": r["status"],
             "priceMin": low,
             "priceMax": high,
+            "latitude": r["center_lat"],
+            "longitude": r["center_lng"],
+            "harvestDate": r["harvest_date"],
         })
     return result
+
+
+@app.get("/price")
+def get_price(crop: str):
+    if crop not in PRICE_RANGES:
+        raise HTTPException(status_code=404, detail="No price range available for this crop")
+    low, high = PRICE_RANGES[crop]
+    return {
+        "crop": crop,
+        "min": low,
+        "max": high,
+        "type": "suggested",
+        "historicalDataAvailable": False,
+    }
 
 
 @app.post("/listings")

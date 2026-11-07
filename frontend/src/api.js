@@ -61,18 +61,12 @@ export async function getOrderStatus(orderId) {
   return request(`/orders/${encodeURIComponent(orderId)}`);
 }
 
-// ---------- Still mock: these belong to Members 3 and 4 ----------
-// Replace the bodies with request()/post() calls once their endpoints exist.
-
-const delay = (data) =>
-  new Promise((resolve) => setTimeout(() => resolve(data), 300));
-
 export async function gradePhoto(file) {
-  void file;
-  return delay({ grade: "A", confidence: 0.91 }); // Member 3: POST /grade
+  const body = new FormData();
+  body.append("photo", file);
+  return request("/grade", { method: "POST", body });
 }
 
 export async function getPriceRange(crop) {
-  void crop;
-  return delay({ min: 20, max: 24 }); // Member 4: GET /price?crop=...
+  return request(`/price?crop=${encodeURIComponent(crop)}`);
 }

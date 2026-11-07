@@ -1,4 +1,4 @@
-import { useLang } from "../LanguageContext";
+import { useLang } from "../useLang";
 
 export default function TopBar() {
   const { lang, setLang, t } = useLang();

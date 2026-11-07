@@ -1,85 +1,76 @@
 import { useNavigate } from "react-router-dom";
-import { useLang } from "../LanguageContext";
+import { ArrowDownRight, ArrowRight, BadgeCheck, Leaf, MapPin, Sprout, Truck, UsersRound } from "lucide-react";
+import { useLang } from "../useLang";
+
+const roles = [
+  { id: "farmer", path: "/farmer/add", icon: Sprout, title: "I’m a farmer", detail: "Pool your harvest and reach more buyers.", tint: "role-green" },
+  { id: "buyer", path: "/buyer", icon: UsersRound, title: "I’m a buyer", detail: "Source fresh produce directly from farms.", tint: "role-amber" },
+  { id: "agent", path: "/agent", icon: Truck, title: "I’m a delivery agent", detail: "Verify and complete a delivery.", tint: "role-blue" },
+];
 
 export default function RoleSelect() {
   const navigate = useNavigate();
-  const { t } = useLang();
+  const { lang, setLang, t } = useLang();
+
+  function enterRole(role, path) {
+    window.localStorage.setItem("kisanpool-role", role);
+    navigate(path);
+  }
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center bg-green-50 px-5 py-12">
-      <main className="w-full max-w-md">
-        {/* Hero section */}
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-green-700 sm:text-5xl">
-            KisanPool
-          </h1>
-          <p className="mt-3 text-lg text-gray-600">Sell together. Earn more.</p>
-        </header>
+    <div className="landing-page">
+      <header className="landing-nav">
+        <a className="brand-lockup" href="/">
+          <span className="brand-mark"><Leaf size={21} /></span>
+          <span className="brand-copy"><strong>KisanPool</strong><small>GROW TOGETHER</small></span>
+        </a>
+        <div className="landing-nav-actions"><span className="landing-tag"><span className="live-dot" /> A fairer way to move harvest</span><select className="landing-language" value={lang} onChange={(event) => setLang(event.target.value)} aria-label="Select language"><option value="en">English</option><option value="hi">हिन्दी</option><option value="ta">தமிழ்</option></select></div>
+      </header>
 
-        <div className="flex flex-col gap-5">
-          {/* Farmer role card */}
-          <button
-            onClick={() => navigate("/farmer/add")}
-            className="flex w-full items-center gap-5 rounded-2xl bg-white p-5 text-left shadow transition hover:shadow-lg active:scale-95"
-          >
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
-              <svg
-                aria-hidden="true"
-                className="size-7"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-                viewBox="0 0 24 24"
-              >
-                <path d="M7 20h10" />
-                <path d="M10 20c5.5-2.5 8-6.5 8-12-5.5 0-9.5 2.5-12 8" />
-                <path d="M8 12c-2.5 0-4-1.5-4-4 4 0 6 1.5 6 4" />
-              </svg>
-            </span>
-            <span>
-              <span className="block text-xl font-semibold text-green-700">
-                {t.farmer}
-              </span>
-              <span className="mt-1 block text-sm text-gray-600">
-                Pool your harvest and sell together.
-              </span>
-            </span>
-          </button>
+      <main>
+        <section className="landing-hero">
+          <div className="hero-copy">
+            <p className="eyebrow"><span className="eyebrow-line" /> A smarter harvest starts here</p>
+            <h1>Together, we grow.<br /><span>Together, we earn.</span></h1>
+            <p className="hero-description">
+              Empowering farmers through smart produce pooling, transparent pricing, and a marketplace built on trust.
+            </p>
+            <a href="#get-started" className="button button-primary hero-cta">Get started <ArrowDownRight size={17} /></a>
+            <div className="hero-proof"><BadgeCheck size={17} /><span>Built for a fairer agricultural supply chain</span></div>
+          </div>
+          <div className="hero-visual" aria-label="Illustration of connected farms and pooled produce">
+            <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
+            <div className="sun-disc" />
+            <div className="hero-field field-back" /><div className="hero-field field-front" />
+            <div className="hero-leaf leaf-one">🌿</div><div className="hero-leaf leaf-two">🌱</div>
+            <div className="hero-pool-card"><span className="pool-card-icon"><Sprout size={18} /></span><span><strong>Good things grow together</strong><small>Small harvests. Stronger markets.</small></span><MapPin size={16} /></div>
+            <span className="hero-stamp">FROM<br />FARM TO<br />FAIR PRICE</span>
+          </div>
+        </section>
 
-          {/* Buyer role card */}
-          <button
-            onClick={() => navigate("/buyer")}
-            className="flex w-full items-center gap-5 rounded-2xl bg-white p-5 text-left shadow transition hover:shadow-lg active:scale-95"
-          >
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-              <svg
-                aria-hidden="true"
-                className="size-7"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-                viewBox="0 0 24 24"
-              >
-                <circle cx="8" cy="21" r="1" />
-                <circle cx="19" cy="21" r="1" />
-                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.72a2 2 0 0 0 2-1.58L22 7H5" />
-              </svg>
-            </span>
-            <span>
-              <span className="block text-xl font-semibold text-green-700">
-                {t.buyer}
-              </span>
-              <span className="mt-1 block text-sm text-gray-600">
-                Find fresh produce from local farmers.
-              </span>
-            </span>
-          </button>
-        </div>
+        <section className="landing-benefits" aria-label="Platform benefits">
+          <div><span className="benefit-icon"><UsersRound size={19} /></span><span><strong>Pool together</strong><small>Bring nearby harvests together</small></span></div>
+          <div><span className="benefit-icon"><BadgeCheck size={19} /></span><span><strong>Trade transparently</strong><small>Clear pricing and order updates</small></span></div>
+          <div><span className="benefit-icon"><Truck size={19} /></span><span><strong>Deliver with trust</strong><small>OTP-confirmed delivery flow</small></span></div>
+        </section>
+
+        <section className="role-section" id="get-started">
+          <div className="role-section-heading">
+            <div><p className="eyebrow">YOUR KISANPOOL</p><h2>How would you like to get started?</h2></div>
+            <p>Choose your workspace to continue.</p>
+          </div>
+          <div className="role-grid">
+            {roles.map(({ id, path, icon: Icon, title, detail, tint }) => (
+              <button key={id} onClick={() => enterRole(id, path)} className="role-card">
+                <span className={`role-card-icon ${tint}`}><Icon size={22} /></span>
+                <span className="role-card-text"><strong>{id === "farmer" ? t.farmer : id === "buyer" ? t.buyer : title}</strong><small>{detail}</small></span>
+                <ArrowRight className="role-arrow" size={18} />
+              </button>
+            ))}
+          </div>
+        </section>
       </main>
+      <footer className="landing-footer"><span>© 2026 KisanPool</span><span>Sell together. Earn more.</span></footer>
     </div>
   );
 }

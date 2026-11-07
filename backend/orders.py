@@ -1,6 +1,7 @@
 import secrets
 
 from fastapi import HTTPException
+from pricing import PRICE_RANGES
 
 # Which status may follow which. Grading (Member 3) and escrow release
 # (Member 4) will use this same table in later steps.
@@ -67,6 +68,18 @@ def confirm_delivery(conn, order_id, otp):
 
 def get_order(conn, order_id):
     order = _get_order_row(conn, order_id)
+    lot = conn.execute(
+        """
+        SELECT lots.crop, lots.village, lots.harvest_date,
+               COALESCE(SUM(listings.quantity_kg), 0) AS total_kg
+        FROM lots
+        LEFT JOIN listings ON listings.lot_id = lots.id
+        WHERE lots.id = ?
+        GROUP BY lots.id
+        """,
+        (order["lot_id"],),
+    ).fetchone()
+    low, high = PRICE_RANGES.get(lot["crop"], (0, 0))
     # DEMO ONLY: there is no login yet, so the OTP is returned here so the
     # buyer screen can show it. In production, only the buyer may see it.
     return {
@@ -74,4 +87,10 @@ def get_order(conn, order_id):
         "lotId": order["lot_id"],
         "status": order["status"],
         "otp": order["otp"],
+        "crop": lot["crop"],
+        "village": lot["village"],
+        "harvestDate": lot["harvest_date"],
+        "quantityKg": lot["total_kg"],
+        "priceMin": low,
+        "priceMax": high,
     }
