@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { confirmDelivery, gradePhoto } from "../api";
 
 // Badge colour for each grade
@@ -9,13 +9,26 @@ const gradeColors = {
   Reject: "bg-red-600",
 };
 
+// Keep only the digits of what was typed or pasted
+const digitsOnly = (text) => text.replace(/\D/g, "");
+
+// The backend says "Cannot move order from DELIVERED to DELIVERED" when the
+// same delivery is confirmed twice. Say that in plain words instead.
+function friendlyError(message) {
+  if (message.startsWith("Cannot move order")) {
+    return "This order has already been delivered.";
+  }
+  return message;
+}
+
 export default function AgentDelivery() {
-  // Demo shortcut: the order ID is pre-filled with the one from Screen 4
-  const [orderId, setOrderId] = useState("101");
+  // The order page links here as /agent?order=1, so the number arrives pre-filled
+  const [searchParams] = useSearchParams();
+  const [orderId, setOrderId] = useState(digitsOnly(searchParams.get("order") || ""));
   const [otp, setOtp] = useState("");
 
   const [photoUrl, setPhotoUrl] = useState(null); // preview of the chosen photo
-  const [result, setResult] = useState(null);     // { grade, confidence } from the model
+  const [result, setResult] = useState(null); // { grade, confidence } from the model
   const [grading, setGrading] = useState(false);
 
   const [confirming, setConfirming] = useState(false);
@@ -25,26 +38,40 @@ export default function AgentDelivery() {
   // Runs when the agent picks a photo
   async function handlePhoto(e) {
     const file = e.target.files[0]; // the first (only) chosen file
-    if (!file) return;              // user cancelled the picker
+    if (!file) return; // user cancelled the picker
 
     setPhotoUrl(URL.createObjectURL(file)); // temporary local link for the preview
     setResult(null);
+    setError("");
     setGrading(true);
-    const res = await gradePhoto(file);     // mock call: returns { grade, confidence }
-    setResult(res);
-    setGrading(false);
+    try {
+      setResult(await gradePhoto(file)); // returns { grade, confidence }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGrading(false);
+    }
   }
 
   async function handleConfirm() {
+    if (!orderId) {
+      setError("Enter the order number");
+      return;
+    }
     if (otp.length < 4) {
       setError("Enter the 4-digit OTP");
       return;
     }
     setError("");
     setConfirming(true);
-    await confirmDelivery(orderId, otp); // mock call
-    setConfirming(false);
-    setConfirmed(true);
+    try {
+      await confirmDelivery(orderId, otp); // real call: the backend checks the OTP
+      setConfirmed(true);
+    } catch (err) {
+      setError(friendlyError(err.message));
+    } finally {
+      setConfirming(false);
+    }
   }
 
   // After confirming, show a success card instead of the form
@@ -53,6 +80,9 @@ export default function AgentDelivery() {
       <div className="mx-auto max-w-md space-y-6 p-8 text-center">
         <p className="text-2xl font-semibold text-green-700">
           Delivery confirmed for order #{orderId}
+        </p>
+        <p className="text-gray-600">
+          The buyer can press Refresh status on the order page to see this.
         </p>
         <Link
           to={`/order/${orderId}`}
@@ -72,8 +102,9 @@ export default function AgentDelivery() {
         <span className="text-lg">Order ID</span>
         <input
           type="text"
+          inputMode="numeric" // shows the number keypad on phones
           value={orderId}
-          onChange={(e) => setOrderId(e.target.value)}
+          onChange={(e) => setOrderId(digitsOnly(e.target.value))}
           className="mt-1 w-full rounded-lg border border-gray-300 p-4 text-lg"
         />
       </label>
@@ -82,10 +113,10 @@ export default function AgentDelivery() {
         <span className="text-lg">OTP from buyer</span>
         <input
           type="text"
-          inputMode="numeric" // shows the number keypad on phones
+          inputMode="numeric"
           maxLength={4}
           value={otp}
-          onChange={(e) => setOtp(e.target.value)}
+          onChange={(e) => setOtp(digitsOnly(e.target.value))}
           className="mt-1 w-full rounded-lg border border-gray-300 p-4 text-center text-2xl tracking-widest"
         />
       </label>
@@ -107,16 +138,23 @@ export default function AgentDelivery() {
       {grading && <p className="text-center text-lg">Grading...</p>}
 
       {result && (
-        <div className="flex items-center justify-center gap-3 rounded-2xl bg-white p-4 shadow">
-          <span
-            className={
-              "rounded-full px-4 py-2 text-xl font-bold text-white " +
-              (gradeColors[result.grade] || "bg-gray-500")
-            }
-          >
-            Grade {result.grade}
-          </span>
-          <span className="text-lg">{Math.round(result.confidence * 100)}% confidence</span>
+        <div className="space-y-1 rounded-2xl bg-white p-4 text-center shadow">
+          <div className="flex items-center justify-center gap-3">
+            <span
+              className={
+                "rounded-full px-4 py-2 text-xl font-bold text-white " +
+                (gradeColors[result.grade] || "bg-gray-500")
+              }
+            >
+              Grade {result.grade}
+            </span>
+            <span className="text-lg">
+              {Math.round(result.confidence * 100)}% confidence
+            </span>
+          </div>
+          <p className="text-sm text-gray-500">
+            Placeholder grade until the grading model is connected.
+          </p>
         </div>
       )}
 
