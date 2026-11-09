@@ -48,8 +48,8 @@ export default function MarketPrices() {
           <div className="panel-heading"><div><p className="eyebrow">CURRENT CONFIGURATION</p><h3>Suggested range by crop</h3></div><span className="chart-legend"><i className="legend-min" />Min <i className="legend-max" />Max</span></div>
           {chartData.length ? <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 10, right: 12, left: -12, bottom: 0 }} barGap={5}>
             <CartesianGrid stroke="#edf1ed" vertical={false} />
-            <XAxis dataKey="crop" tickLine={false} axisLine={false} tick={{ fill: "#718074", fontSize: 12 }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#879188", fontSize: 11 }} tickFormatter={(value) => `₹${value}`} />
+            <XAxis dataKey="crop" tickLine={false} axisLine={false} tick={{ fill: "#718074", fontSize: 13 }} />
+            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#879188", fontSize: 13 }} tickFormatter={(value) => `₹${value}`} />
             <Tooltip formatter={(value) => [`₹${value}/kg`, "Suggested"]} cursor={{ fill: "#f5f8f4" }} />
             <Bar dataKey="Minimum" radius={[5, 5, 0, 0]}>{chartData.map((item) => <Cell key={item.crop} fill="#84cc16" />)}</Bar>
             <Bar dataKey="Maximum" radius={[5, 5, 0, 0]}>{chartData.map((item) => <Cell key={item.crop} fill="#166534" />)}</Bar>

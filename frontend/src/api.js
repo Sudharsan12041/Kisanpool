@@ -64,7 +64,15 @@ export async function getOrderStatus(orderId) {
 export async function gradePhoto(file) {
   const body = new FormData();
   body.append("photo", file);
-  return request("/grade", { method: "POST", body });
+  try {
+    return await request("/grade", { method: "POST", body });
+  } catch (err) {
+    // The backend answers "Not Found" while the grading endpoint does not exist yet
+    if (err.message === "Not Found") {
+      throw new Error("The grading service is not available yet.");
+    }
+    throw err;
+  }
 }
 
 export async function getPriceRange(crop) {
